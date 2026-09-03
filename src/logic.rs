@@ -17,8 +17,9 @@ impl Ticker {
     /// Cuando compras más de una acción de golpe, el precio no es el mismo para todas las acciones. Se debe calcular
     /// de forma individual para cada acción comprada. La suma de los precios individuales será el precio de la transacción.
     pub fn price_for_amount(&self, amount: i32) -> i32 {
-        // ERROR: La formula NO funciona.
-        BASE_PRICE + (BASE_PRICE + INCREASE_RATE * self.actions) * amount
+        // Esta formula fue hecha por Jorgitox
+        let current_price = BASE_PRICE + self.actions * INCREASE_RATE;
+        current_price * amount + amount * (amount - 1) / 2 * INCREASE_RATE
     }
 }
 
@@ -41,16 +42,6 @@ impl Market {
         Self {
             tickers: Vec::new(),
         }
-    }
-
-    fn list_tickers(&self) -> Vec<Ticker> {
-        self.tickers.clone()
-    }
-
-    fn create_ticker(&mut self, name: String, description: String) -> Ticker {
-        let ticker = Ticker::new(name, description);
-        self.tickers.push(ticker.clone());
-        ticker
     }
 }
 
@@ -89,10 +80,18 @@ mod tests {
     }
 
     #[test]
+    fn correct_buy_price_when_buying_one() {
+        let ticker = Ticker::new("$JOGE".to_string(), "Las jogeadas, muy buenas.".to_string());
+        let result = ticker.price_for_amount(1);
+
+        assert_eq!(result, 100);
+    }
+
+    #[test]
     fn user_can_buy_actions_if_affordable() {
         let mut user = User::new("Polarín".to_string());
         let ticker = Ticker::new("$JOGE".to_string(), "Las jogeadas, muy buenas.".to_string());
-        user.nicho_coins = 10000;
+        user.nicho_coins = 17250;
 
         assert!(buy_actions(user, ticker, 50).is_ok());
     }
