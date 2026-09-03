@@ -35,16 +35,19 @@ impl User {
 /// Esta estructura representa el mercado. Todos los tickers están guardados aquí.
 pub struct Market {
     tickers: Vec<Ticker>,
+    users: Vec<User>,
 }
 
 impl Market {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             tickers: Vec::new(),
+            users: Vec::new(),
         }
     }
 }
 
+// TODO: Manejo de errores propios en lugar de regresar Strings
 pub fn buy_actions(mut user: User, mut ticker: Ticker, amount: i32) -> Result<(), String> {
     let price = ticker.price_for_amount(amount);
 
