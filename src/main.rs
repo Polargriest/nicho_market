@@ -3,12 +3,22 @@ mod schema;
 mod server;
 
 use crate::{logic::Market, server::create_app};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+fn setup() -> Market {
+    let mut store = Market::new();
+
+    store.add_ticker("Joge", "La estamos rompiendo");
+    store.add_user("Edy Figueroa");
+    store.set_money_for_user(0, 100_000).unwrap();
+
+    store
+}
 
 #[tokio::main]
 async fn main() {
-    let store = Market::new();
-    let app = create_app(Arc::new(store));
+    let market = setup();
+    let app = create_app(Arc::new(Mutex::new(market)));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await

@@ -1,11 +1,47 @@
+use axum::{Json, http::StatusCode, response::IntoResponse};
+use serde_json::json;
+
 use crate::schema::{Ticker, User};
 
 const INCREASE_RATE: i32 = 10;
 pub const BASE_PRICE: i32 = 100;
 
+#[derive(Debug)]
+pub enum ApiError {
+    BuyError,
+    UserNotFound(i32),
+    TickerNotFound(i32),
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> axum::response::Response {
+        let (status_code, error_message) = match self {
+            ApiError::BuyError => (
+                StatusCode::BAD_REQUEST,
+                "Error while buying actions".to_string(),
+            ),
+            ApiError::UserNotFound(id) => (
+                StatusCode::BAD_REQUEST,
+                format!("User with ID {id} not found."),
+            ),
+            ApiError::TickerNotFound(id) => (
+                StatusCode::BAD_REQUEST,
+                format!("Ticker with ID {id} not found."),
+            ),
+        };
+
+        let body = Json(json!({
+            "error": error_message
+        }));
+
+        (status_code, body).into_response()
+    }
+}
+
 impl Ticker {
-    pub fn new(name: String, description: String) -> Self {
+    pub fn new(id: i32, name: String, description: String) -> Self {
         Self {
+            id,
             name,
             description,
             actions: 0,
@@ -24,8 +60,9 @@ impl Ticker {
 }
 
 impl User {
-    fn new(name: String) -> Self {
+    fn new(id: i32, name: String) -> Self {
         Self {
+            id,
             name,
             nicho_coins: 0,
         }
@@ -36,6 +73,9 @@ impl User {
 pub struct Market {
     tickers: Vec<Ticker>,
     users: Vec<User>,
+
+    next_ticker_id: i32,
+    next_user_id: i32,
 }
 
 impl Market {
@@ -43,22 +83,82 @@ impl Market {
         Self {
             tickers: Vec::new(),
             users: Vec::new(),
+            next_ticker_id: 0,
+            next_user_id: 0,
         }
     }
-}
 
-// TODO: Manejo de errores propios en lugar de regresar Strings
-pub fn buy_actions(mut user: User, mut ticker: Ticker, amount: i32) -> Result<(), String> {
-    let price = ticker.price_for_amount(amount);
-
-    if user.nicho_coins < price {
-        return Err("User can't afford money".to_string());
+    pub fn list_users(&self) -> Vec<User> {
+        self.users.clone()
     }
 
-    ticker.actions += amount;
-    user.nicho_coins -= price;
+    pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
+        let user = self.get_user_by_id(user_id)?;
+        user.nicho_coins = money;
+        Ok(())
+    }
 
-    Ok(())
+    pub fn list_tickers(&self) -> Vec<Ticker> {
+        self.tickers.clone()
+    }
+
+    pub fn add_ticker(&mut self, name: &str, description: &str) -> Ticker {
+        let ticker = Ticker::new(
+            self.next_ticker_id,
+            name.to_string(),
+            description.to_string(),
+        );
+        println!("Ticker '{name}' created (ID: {})", self.next_ticker_id);
+        self.next_ticker_id += 1;
+        self.tickers.push(ticker.clone());
+        ticker
+    }
+
+    pub fn add_user(&mut self, name: &str) -> User {
+        let user = User::new(self.next_user_id, name.to_string());
+        println!("User '{name}' created (ID: {})", self.next_user_id);
+        self.next_user_id += 1;
+        self.users.push(user.clone());
+        user
+    }
+
+    fn get_user_by_id(&mut self, user_id: i32) -> Result<&mut User, ApiError> {
+        Ok(self
+            .users
+            .iter_mut()
+            .find(|u| u.id == user_id)
+            .ok_or(ApiError::UserNotFound(user_id))?)
+    }
+
+    // TODO: Manejo de errores propios en lugar de regresar Strings
+    pub fn buy_actions(
+        &mut self,
+        user_id: i32,
+        ticker_id: i32,
+        amount: i32,
+    ) -> Result<(), ApiError> {
+        let user = self
+            .users
+            .iter_mut()
+            .find(|u| u.id == user_id)
+            .ok_or(ApiError::UserNotFound(user_id))?;
+        let ticker = self
+            .tickers
+            .iter_mut()
+            .find(|t| t.id == ticker_id)
+            .ok_or(ApiError::TickerNotFound(ticker_id))?;
+
+        let price = ticker.price_for_amount(amount);
+
+        if user.nicho_coins < price {
+            return Err(ApiError::BuyError);
+        }
+
+        ticker.actions += amount;
+        user.nicho_coins -= price;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -67,7 +167,7 @@ mod tests {
 
     #[test]
     fn correct_buy_price_for_new_ticker() {
-        let ticker = Ticker::new("$JOGE".to_string(), "Las jogeadas, muy buenas.".to_string());
+        let ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
         let result = ticker.price_for_amount(5);
 
         assert_eq!(result, 600);
@@ -75,7 +175,7 @@ mod tests {
 
     #[test]
     fn correct_buy_price_for_ticker() {
-        let mut ticker = Ticker::new("$JOGE".to_string(), "Las jogeadas, muy buenas.".to_string());
+        let mut ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
         ticker.actions = 5;
         let result = ticker.price_for_amount(5);
 
@@ -84,7 +184,7 @@ mod tests {
 
     #[test]
     fn correct_buy_price_when_buying_one() {
-        let ticker = Ticker::new("$JOGE".to_string(), "Las jogeadas, muy buenas.".to_string());
+        let ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
         let result = ticker.price_for_amount(1);
 
         assert_eq!(result, 100);
@@ -92,19 +192,19 @@ mod tests {
 
     #[test]
     fn user_can_buy_actions_if_affordable() {
-        let mut user = User::new("Polarín".to_string());
-        let ticker = Ticker::new("$JOGE".to_string(), "Las jogeadas, muy buenas.".to_string());
+        let mut user = User::new(0, "Polarín".to_string());
+        let mut ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
         user.nicho_coins = 17250;
 
-        assert!(buy_actions(user, ticker, 50).is_ok());
+        assert!(buy_actions(&mut user, &mut ticker, 50).is_ok());
     }
 
     #[test]
     fn user_cant_buy_actions_if_broke() {
-        let mut user = User::new("Polarín".to_string());
-        let ticker = Ticker::new("$JOGE".to_string(), "Las jogeadas, muy buenas.".to_string());
+        let mut user = User::new(0, "Polarín".to_string());
+        let mut ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
         user.nicho_coins = 100;
 
-        assert!(buy_actions(user, ticker, 50).is_err());
+        assert!(buy_actions(&mut user, &mut ticker, 50).is_err());
     }
 }
