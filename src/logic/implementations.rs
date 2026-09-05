@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     logic::errors::ApiError,
     schema::{Ticker, User},
@@ -42,6 +44,7 @@ impl User {
             id,
             name,
             nicho_coins: 0,
+            portfolio: HashMap::new(),
         }
     }
 }

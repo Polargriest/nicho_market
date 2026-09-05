@@ -113,10 +113,16 @@ impl Market {
 
         ticker.actions += amount;
         user.nicho_coins -= price;
+        *user.portfolio.entry(ticker_id).or_insert(0) += amount;
 
         Ok(())
     }
 
+    /// Método que representa la venta de acciones que un usuario hace. Este método se encarga
+    /// de aumentarle el dinero al usuario y disminuir el número de acciones de un ticker. El
+    /// método también hace las verificaciones necesarias, como revisar que el usuario tenga
+    /// suficientes acciones para vender. Si el usuario termina con cero acciones en el ticker,
+    /// se limpia de su portafolio también.
     pub fn sell_actions(
         &mut self,
         user_id: i32,
@@ -134,14 +140,26 @@ impl Market {
             .find(|t| t.id == ticker_id)
             .ok_or(ApiError::TickerNotFound(ticker_id))?;
 
-        if ticker.actions < amount {
+        // check if user has enough ticker's actions to sell.
+        if user
+            .portfolio
+            .get(&ticker_id)
+            .is_none_or(|actions| &amount > actions)
+        {
             return Err(ApiError::NotEnoughActions);
         }
 
         let cash = ticker.price_for_selling(amount)?;
 
+        // update all values (user cash, ticker's actions and user's portfolio)
         ticker.actions -= amount;
         user.nicho_coins += cash;
+        *user.portfolio.get_mut(&ticker_id).unwrap() -= amount;
+
+        // remove ticker from user's portfolio is it has 0 actions bought.
+        if *user.portfolio.get(&ticker_id).unwrap() == 0 {
+            user.portfolio.remove(&ticker_id);
+        }
 
         Ok(())
     }

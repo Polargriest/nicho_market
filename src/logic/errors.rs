@@ -14,19 +14,19 @@ impl IntoResponse for ApiError {
         let (status_code, error_message) = match self {
             ApiError::NotAffordable => (
                 StatusCode::BAD_REQUEST,
-                "User can't afford that amount of actions".to_string(),
+                "user can't afford that amount of actions".to_string(),
             ),
             ApiError::NotEnoughActions => (
                 StatusCode::BAD_REQUEST,
-                "Currently insufficient actions in stock for requested ticker".to_string(),
+                "user does not has enough actions bought in ticker to sell".to_string(),
             ),
             ApiError::UserNotFound(id) => (
                 StatusCode::NOT_FOUND,
-                format!("User with ID {id} not found."),
+                format!("user with ID {id} not found"),
             ),
             ApiError::TickerNotFound(id) => (
                 StatusCode::NOT_FOUND,
-                format!("Ticker with ID {id} not found."),
+                format!("ticker with ID {id} not found"),
             ),
         };
 

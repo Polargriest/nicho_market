@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 
 #[derive(Serialize, Clone)]
 pub struct Ticker {
@@ -13,4 +14,5 @@ pub struct User {
     pub id: i32,
     pub name: String,
     pub nicho_coins: i32,
+    pub portfolio: HashMap<i32, i32>,
 }
