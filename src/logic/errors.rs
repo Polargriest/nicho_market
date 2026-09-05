@@ -3,7 +3,7 @@ use serde_json::json;
 
 #[derive(Debug)]
 pub enum ApiError {
-    BuyError,
+    NotAffordable,
     UserNotFound(i32),
     TickerNotFound(i32),
 }
@@ -11,9 +11,9 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         let (status_code, error_message) = match self {
-            ApiError::BuyError => (
+            ApiError::NotAffordable => (
                 StatusCode::BAD_REQUEST,
-                "Error while buying actions".to_string(),
+                "User can't afford that amount of actions".to_string(),
             ),
             ApiError::UserNotFound(id) => (
                 StatusCode::NOT_FOUND,

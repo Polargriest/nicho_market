@@ -108,7 +108,7 @@ impl Market {
         let price = ticker.price_for_amount(amount);
 
         if user.nicho_coins < price {
-            return Err(ApiError::BuyError);
+            return Err(BuyError::NotAffordable);
         }
 
         ticker.actions += amount;
