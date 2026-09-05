@@ -21,11 +21,11 @@ impl IntoResponse for ApiError {
                 "Error while buying actions".to_string(),
             ),
             ApiError::UserNotFound(id) => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 format!("User with ID {id} not found."),
             ),
             ApiError::TickerNotFound(id) => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 format!("Ticker with ID {id} not found."),
             ),
         };
