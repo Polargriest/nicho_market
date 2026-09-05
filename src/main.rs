@@ -12,7 +12,9 @@ fn setup() -> Market {
 
     store.add_ticker("Joge", "La estamos rompiendo");
     store.add_user("Edy Figueroa");
+    store.add_user("Quintero Nose");
     store.set_money_for_user(0, 100_000).unwrap();
+    store.set_money_for_user(1, 100_000).unwrap();
 
     store
 }

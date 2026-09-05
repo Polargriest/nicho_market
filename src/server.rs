@@ -38,6 +38,20 @@ async fn buy_actions_endpoint(
     })))
 }
 
+async fn sell_actions_endpoint(
+    State(store): State<Arc<Mutex<Market>>>,
+    Path((user_id, ticker_id, amount)): Path<(i32, i32, i32)>,
+) -> Result<Json<Value>, ApiError> {
+    store
+        .lock()
+        .unwrap()
+        .sell_actions(user_id, ticker_id, amount)?;
+
+    Ok(Json(json!({
+        "result": "ok",
+    })))
+}
+
 pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
     Router::new()
         .route("/health", get(health_check))
@@ -46,6 +60,10 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route(
             "/buy/{user_id}/{ticker_id}/{amount}",
             get(buy_actions_endpoint),
+        )
+        .route(
+            "/sell/{user_id}/{ticker_id}/{amount}",
+            get(sell_actions_endpoint),
         )
         .with_state(market)
 }

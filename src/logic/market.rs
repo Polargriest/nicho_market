@@ -116,4 +116,33 @@ impl Market {
 
         Ok(())
     }
+
+    pub fn sell_actions(
+        &mut self,
+        user_id: i32,
+        ticker_id: i32,
+        amount: i32,
+    ) -> Result<(), ApiError> {
+        let user = self
+            .users
+            .iter_mut()
+            .find(|u| u.id == user_id)
+            .ok_or(ApiError::UserNotFound(user_id))?;
+        let ticker = self
+            .tickers
+            .iter_mut()
+            .find(|t| t.id == ticker_id)
+            .ok_or(ApiError::TickerNotFound(ticker_id))?;
+
+        if ticker.actions < amount {
+            return Err(ApiError::NotEnoughActions);
+        }
+
+        let cash = ticker.price_for_selling(amount)?;
+
+        ticker.actions -= amount;
+        user.nicho_coins += cash;
+
+        Ok(())
+    }
 }
