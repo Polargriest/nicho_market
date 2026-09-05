@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     response::IntoResponse,
-    routing::get,
+    routing::{get, post},
 };
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
@@ -59,11 +59,11 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/users", get(get_users))
         .route(
             "/buy/{user_id}/{ticker_id}/{amount}",
-            get(buy_actions_endpoint),
+            post(buy_actions_endpoint),
         )
         .route(
             "/sell/{user_id}/{ticker_id}/{amount}",
-            get(sell_actions_endpoint),
+            post(sell_actions_endpoint),
         )
         .with_state(market)
 }
