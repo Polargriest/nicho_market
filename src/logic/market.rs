@@ -105,7 +105,7 @@ impl Market {
             .find(|t| t.id == ticker_id)
             .ok_or(ApiError::TickerNotFound(ticker_id))?;
 
-        let price = ticker.price_for_amount(amount);
+        let price = ticker.price_for_buying(amount);
 
         if user.nicho_coins < price {
             return Err(ApiError::NotAffordable);

@@ -4,6 +4,7 @@ use serde_json::json;
 #[derive(Debug)]
 pub enum ApiError {
     NotAffordable,
+    NotEnoughActions,
     UserNotFound(i32),
     TickerNotFound(i32),
 }
@@ -14,6 +15,10 @@ impl IntoResponse for ApiError {
             ApiError::NotAffordable => (
                 StatusCode::BAD_REQUEST,
                 "User can't afford that amount of actions".to_string(),
+            ),
+            ApiError::NotEnoughActions => (
+                StatusCode::BAD_REQUEST,
+                "Currently insufficient actions in stock for requested ticker".to_string(),
             ),
             ApiError::UserNotFound(id) => (
                 StatusCode::NOT_FOUND,
