@@ -33,3 +33,33 @@ impl User {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn correct_buy_price_for_new_ticker() {
+        let ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        let result = ticker.price_for_amount(5);
+
+        assert_eq!(result, 600);
+    }
+
+    #[test]
+    fn correct_buy_price_for_ticker() {
+        let mut ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        ticker.actions = 5;
+        let result = ticker.price_for_amount(5);
+
+        assert_eq!(result, 850);
+    }
+
+    #[test]
+    fn correct_buy_price_when_buying_one() {
+        let ticker = Ticker::new(0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        let result = ticker.price_for_amount(1);
+
+        assert_eq!(result, 100);
+    }
+}
