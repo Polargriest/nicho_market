@@ -1,0 +1,35 @@
+use crate::schema::{Ticker, User};
+
+const INCREASE_RATE: i32 = 10;
+pub const BASE_PRICE: i32 = 100;
+
+impl Ticker {
+    pub fn new(id: i32, name: String, description: String) -> Self {
+        Self {
+            id,
+            name,
+            description,
+            actions: 0,
+        }
+    }
+
+    /// Regresa el precio en el que te sale comprar cierta cantidad de acciones según el estado actual del ticker.
+    /// El precio se calcula con la siguiente formula: `precio = precio_base + (acciones_actuales * tasa_de_incremento)`.
+    /// Cuando compras más de una acción de golpe, el precio no es el mismo para todas las acciones. Se debe calcular
+    /// de forma individual para cada acción comprada. La suma de los precios individuales será el precio de la transacción.
+    pub fn price_for_amount(&self, amount: i32) -> i32 {
+        // Esta formula fue hecha por Jorgitox
+        let current_price = BASE_PRICE + self.actions * INCREASE_RATE;
+        current_price * amount + amount * (amount - 1) / 2 * INCREASE_RATE
+    }
+}
+
+impl User {
+    pub fn new(id: i32, name: String) -> Self {
+        Self {
+            id,
+            name,
+            nicho_coins: 0,
+        }
+    }
+}

@@ -7,7 +7,7 @@ use axum::{
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
-use crate::logic::{ApiError, Market};
+use crate::logic::{errors::ApiError, market::Market};
 
 async fn health_check() -> impl IntoResponse {
     Json(json!({

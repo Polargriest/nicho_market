@@ -2,8 +2,10 @@ mod logic;
 mod schema;
 mod server;
 
-use crate::{logic::Market, server::create_app};
+use crate::server::create_app;
 use std::sync::{Arc, Mutex};
+
+use crate::logic::market::Market;
 
 fn setup() -> Market {
     let mut store = Market::new();
