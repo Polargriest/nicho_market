@@ -1,6 +1,7 @@
 use crate::{
     logic::errors::ApiError,
     schema::{Ticker, User},
+    server::TransactionResult,
 };
 
 /// Esta estructura representa el mercado. Todos los tickers y los usuarios están guardados aquí.
@@ -93,7 +94,7 @@ impl Market {
         user_id: i32,
         ticker_id: i32,
         amount: i32,
-    ) -> Result<(), ApiError> {
+    ) -> Result<TransactionResult, ApiError> {
         let user = self
             .users
             .iter_mut()
@@ -115,7 +116,10 @@ impl Market {
         user.nicho_coins -= price;
         *user.portfolio.entry(ticker_id).or_insert(0) += amount;
 
-        Ok(())
+        Ok(TransactionResult {
+            user: user.clone(),
+            ticker: ticker.clone(),
+        })
     }
 
     /// Método que representa la venta de acciones que un usuario hace. Este método se encarga
@@ -128,7 +132,7 @@ impl Market {
         user_id: i32,
         ticker_id: i32,
         amount: i32,
-    ) -> Result<(), ApiError> {
+    ) -> Result<TransactionResult, ApiError> {
         let user = self
             .users
             .iter_mut()
@@ -161,6 +165,98 @@ impl Market {
             user.portfolio.remove(&ticker_id);
         }
 
-        Ok(())
+        Ok(TransactionResult {
+            user: user.clone(),
+            ticker: ticker.clone(),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_can_buy_if_enough_money() {
+        let mut market = Market::new();
+        let user = market.add_user("John Market");
+        market.set_money_for_user(user.id, 600).unwrap();
+        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+
+        let result = market.buy_actions(user.id, ticker.id, 5);
+
+        assert!(result.is_ok());
+        assert_eq!(
+            market
+                .get_user_by_id(user.id)
+                .unwrap()
+                .portfolio
+                .get(&ticker.id)
+                .unwrap(),
+            &5
+        );
+    }
+
+    #[test]
+    fn user_cant_buy_if_not_enough_money() {
+        let mut market = Market::new();
+        let user = market.add_user("John Market");
+        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+
+        let result = market.buy_actions(user.id, ticker.id, 5);
+
+        assert!(result.is_err());
+        assert!(
+            market
+                .get_user_by_id(user.id)
+                .unwrap()
+                .portfolio
+                .get(&ticker.id)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn user_cant_sell_if_not_enough_actions() {
+        let mut market = Market::new();
+        let user = market.add_user("John Market");
+        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+        market.set_money_for_user(user.id, 600).unwrap();
+        market.buy_actions(user.id, ticker.id, 5).unwrap();
+
+        let result = market.sell_actions(user.id, ticker.id, 10);
+
+        assert!(result.is_err());
+        assert_eq!(
+            market
+                .get_user_by_id(user.id)
+                .unwrap()
+                .portfolio
+                .get(&ticker.id)
+                .unwrap(),
+            &5
+        );
+    }
+
+    #[test]
+    fn user_can_sell_if_enough_actions() {
+        let mut market = Market::new();
+        let user = market.add_user("John Market");
+        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+        market.set_money_for_user(user.id, 600).unwrap();
+        market.buy_actions(user.id, ticker.id, 5).unwrap();
+
+        let result = market.sell_actions(user.id, ticker.id, 3);
+
+        assert!(result.is_ok());
+        assert_eq!(
+            market
+                .get_user_by_id(user.id)
+                .unwrap()
+                .portfolio
+                .get(&ticker.id)
+                .unwrap(),
+            &2
+        );
     }
 }

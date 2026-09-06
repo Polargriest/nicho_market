@@ -1,7 +1,10 @@
+//! Entidades que forman parte del dominio de la bolsa de valores de nichos. Elementos que
+//! Market maneja van en este módulo.
 use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Ticker {
     pub id: i32,
     pub name: String,
@@ -10,6 +13,7 @@ pub struct Ticker {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: i32,
     pub name: String,

@@ -4,10 +4,20 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use serde_json::{Value, json};
+use serde::Serialize;
+use serde_json::json;
 use std::sync::{Arc, Mutex};
 
-use crate::logic::{errors::ApiError, market::Market};
+use crate::{
+    logic::{errors::ApiError, market::Market},
+    schema::{Ticker, User},
+};
+
+#[derive(Serialize)]
+pub struct TransactionResult {
+    pub user: User,
+    pub ticker: Ticker,
+}
 
 async fn health_check() -> impl IntoResponse {
     Json(json!({
@@ -27,29 +37,25 @@ async fn get_tickers(State(store): State<Arc<Mutex<Market>>>) -> impl IntoRespon
 async fn buy_actions_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     Path((user_id, ticker_id, amount)): Path<(i32, i32, i32)>,
-) -> Result<Json<Value>, ApiError> {
-    store
+) -> Result<Json<TransactionResult>, ApiError> {
+    let result = store
         .lock()
         .unwrap()
         .buy_actions(user_id, ticker_id, amount)?;
 
-    Ok(Json(json!({
-        "result": "ok",
-    })))
+    Ok(Json(result))
 }
 
 async fn sell_actions_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     Path((user_id, ticker_id, amount)): Path<(i32, i32, i32)>,
-) -> Result<Json<Value>, ApiError> {
-    store
+) -> Result<Json<TransactionResult>, ApiError> {
+    let result = store
         .lock()
         .unwrap()
         .sell_actions(user_id, ticker_id, amount)?;
 
-    Ok(Json(json!({
-        "result": "ok",
-    })))
+    Ok(Json(result))
 }
 
 pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
