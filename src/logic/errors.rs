@@ -3,6 +3,7 @@ use serde_json::json;
 
 #[derive(Debug)]
 pub enum ApiError {
+    Unauthorized,
     NotAffordable,
     NotEnoughActions,
     UserNotFound(i32),
@@ -12,6 +13,10 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         let (status_code, error_message) = match self {
+            ApiError::Unauthorized => (
+                StatusCode::UNAUTHORIZED,
+                "user is not authentificated".to_string(),
+            ),
             ApiError::NotAffordable => (
                 StatusCode::BAD_REQUEST,
                 "user can't afford that amount of actions".to_string(),

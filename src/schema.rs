@@ -19,4 +19,6 @@ pub struct User {
     pub name: String,
     pub nicho_coins: i32,
     pub portfolio: HashMap<i32, i32>,
+    // This might be a bad idea, since you can see all the user's fields in /users
+    pub token: String,
 }

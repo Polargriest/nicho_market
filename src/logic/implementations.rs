@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use uuid::Uuid;
 
 use crate::{
     logic::errors::ApiError,
@@ -45,6 +46,7 @@ impl User {
             name,
             nicho_coins: 0,
             portfolio: HashMap::new(),
+            token: Uuid::new_v4().to_string(),
         }
     }
 }

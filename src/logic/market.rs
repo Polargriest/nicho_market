@@ -46,11 +46,21 @@ impl Market {
             .ok_or(ApiError::UserNotFound(user_id))?)
     }
 
+    /// Regresa una referencia a un usuario del mercado. La referencia que se regresa apunta.
+    pub fn get_user_id_from_token(&self, token: &str) -> Option<i32> {
+        self.users
+            .iter()
+            .find(|u| u.token == token)
+            .iter()
+            .nth(0)
+            .and_then(|u| Some(u.id))
+    }
+
     /// Crea a un nuevo usuario en el mercado y lo mete a la lista. El ID del usuario se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
     pub fn add_user(&mut self, name: &str) -> User {
         let user = User::new(self.next_user_id, name.to_string());
-        println!("(+) User '{name}' created (ID: {})", self.next_user_id);
+        println!("(+) User '{name}' created (Token: {})", user.token);
         self.next_user_id += 1;
         self.users.push(user.clone());
         user
@@ -116,6 +126,11 @@ impl Market {
         user.nicho_coins -= price;
         *user.portfolio.entry(ticker_id).or_insert(0) += amount;
 
+        println!(
+            "(!) User '{}' just bought {amount} actions to '{}'",
+            user.name, ticker.name
+        );
+
         Ok(TransactionResult {
             user: user.clone(),
             ticker: ticker.clone(),
@@ -164,6 +179,11 @@ impl Market {
         if *user.portfolio.get(&ticker_id).unwrap() == 0 {
             user.portfolio.remove(&ticker_id);
         }
+
+        println!(
+            "(!) User '{}' just sold {amount} actions to '{}'",
+            user.name, ticker.name
+        );
 
         Ok(TransactionResult {
             user: user.clone(),
