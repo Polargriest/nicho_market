@@ -48,12 +48,7 @@ impl Market {
 
     /// Regresa una referencia a un usuario del mercado. La referencia que se regresa apunta.
     pub fn get_user_id_from_token(&self, token: &str) -> Option<i32> {
-        self.users
-            .iter()
-            .find(|u| u.token == token)
-            .iter()
-            .nth(0)
-            .and_then(|u| Some(u.id))
+        self.users.iter().find(|u| u.token == token).map(|u| u.id)
     }
 
     /// Crea a un nuevo usuario en el mercado y lo mete a la lista. El ID del usuario se autogenera.

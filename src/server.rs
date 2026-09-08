@@ -1,16 +1,12 @@
 use axum::{
     Json, Router,
-    extract::{Path, State},
-    http::HeaderMap,
+    extract::{FromRequestParts, Path, State},
     response::IntoResponse,
     routing::{get, post},
 };
 use serde::Serialize;
 use serde_json::json;
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use crate::{
     logic::{errors::ApiError, market::Market},
@@ -38,39 +34,44 @@ async fn get_tickers(State(store): State<Arc<Mutex<Market>>>) -> impl IntoRespon
     Json(store.lock().unwrap().list_tickers())
 }
 
-async fn check_user(token: &str) -> Result<String, ApiError> {
-    if !token.starts_with("Bearer ") {
-        return Err(ApiError::Unauthorized);
+struct AuthenticatedUser(i32);
+
+impl FromRequestParts<Arc<Mutex<Market>>> for AuthenticatedUser {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &Arc<Mutex<Market>>,
+    ) -> Result<Self, Self::Rejection> {
+        // try exctracting the "Authorization" header
+        let header = parts
+            .headers
+            .get("Authorization")
+            .ok_or(ApiError::Unauthorized)?
+            .to_str()
+            .map_err(|_| ApiError::Unauthorized)?;
+
+        // we got the header! now let's strip the "Bearer " prefix
+        let token = header
+            .strip_prefix("Bearer ")
+            .ok_or(ApiError::Unauthorized)?;
+
+        // we now have a token that allegedly belongs to an user. Let's fetch it.
+        let user_id = state
+            .lock()
+            .unwrap()
+            .get_user_id_from_token(token)
+            .ok_or(ApiError::Unauthorized)?;
+
+        Ok(AuthenticatedUser(user_id))
     }
-
-    let uuid_token = token.trim_start_matches("Bearer ");
-
-    let Ok(valid) = uuid::Uuid::from_str(uuid_token) else {
-        return Err(ApiError::Unauthorized);
-    };
-
-    Ok(valid.to_string())
 }
 
 async fn buy_actions_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     Path((ticker_id, amount)): Path<(i32, i32)>,
-    headers: HeaderMap,
+    AuthenticatedUser(user_id): AuthenticatedUser,
 ) -> Result<Json<TransactionResult>, ApiError> {
-    let Some(token) = headers.get("Authorization") else {
-        return Err(ApiError::Unauthorized);
-    };
-
-    let Ok(token_str) = token.to_str() else {
-        return Err(ApiError::Unauthorized);
-    };
-
-    let valid_token = check_user(token_str).await?;
-
-    let Some(user_id) = store.lock().unwrap().get_user_id_from_token(&valid_token) else {
-        return Err(ApiError::Unauthorized);
-    };
-
     let result = store
         .lock()
         .unwrap()
@@ -82,22 +83,8 @@ async fn buy_actions_endpoint(
 async fn sell_actions_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     Path((ticker_id, amount)): Path<(i32, i32)>,
-    headers: HeaderMap,
+    AuthenticatedUser(user_id): AuthenticatedUser,
 ) -> Result<Json<TransactionResult>, ApiError> {
-    let Some(token) = headers.get("Authorization") else {
-        return Err(ApiError::Unauthorized);
-    };
-
-    let Ok(token_str) = token.to_str() else {
-        return Err(ApiError::Unauthorized);
-    };
-
-    let valid_token = check_user(token_str).await?;
-
-    let Some(user_id) = store.lock().unwrap().get_user_id_from_token(&valid_token) else {
-        return Err(ApiError::Unauthorized);
-    };
-
     let result = store
         .lock()
         .unwrap()
