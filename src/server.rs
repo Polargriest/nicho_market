@@ -4,7 +4,7 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 
@@ -67,6 +67,13 @@ impl FromRequestParts<Arc<Mutex<Market>>> for AuthenticatedUser {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AddTickerRequest {
+    name: String,
+    description: String,
+}
+
 async fn buy_actions_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     Path((ticker_id, amount)): Path<(i32, i32)>,
@@ -95,10 +102,13 @@ async fn sell_actions_endpoint(
 
 async fn add_ticker(
     State(store): State<Arc<Mutex<Market>>>,
-    Path((name, description)): Path<(String, String)>,
-    AuthenticatedUser(_): AuthenticatedUser,
+    AuthenticatedUser(user_id): AuthenticatedUser,
+    contents: Json<AddTickerRequest>,
 ) -> Json<Ticker> {
-    let result = store.lock().unwrap().add_ticker(&name, &description);
+    let result = store
+        .lock()
+        .unwrap()
+        .add_ticker(user_id, &contents.name, &contents.description);
 
     Json(result)
 }
@@ -110,6 +120,6 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/users", get(get_users))
         .route("/buy/{ticker_id}/{amount}", post(buy_actions_endpoint))
         .route("/sell/{ticker_id}/{amount}", post(sell_actions_endpoint))
-        .route("/add_ticker/{name}/{description}", post(add_ticker))
+        .route("/add_ticker", post(add_ticker))
         .with_state(market)
 }

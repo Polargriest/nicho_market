@@ -1,6 +1,8 @@
+use serde::Serialize;
+
 use crate::{
     logic::errors::ApiError,
-    schema::{Ticker, User},
+    schema::{Ticker, Transaction, TransactionType, User},
     server::TransactionResult,
 };
 
@@ -12,6 +14,23 @@ pub struct Market {
 
     next_ticker_id: i32,
     next_user_id: i32,
+}
+
+#[derive(Serialize)]
+pub struct TickerSummary {
+    name: String,
+    description: String,
+    actions: i32,
+}
+
+impl From<&Ticker> for TickerSummary {
+    fn from(value: &Ticker) -> Self {
+        Self {
+            name: value.name.clone(),
+            description: value.description.clone(),
+            actions: value.actions,
+        }
+    }
 }
 
 impl Market {
@@ -65,21 +84,30 @@ impl Market {
 
     /// Regresa una lista de todos los tickers (o nichos) en un vector. Nota que se crea un clon de la
     /// lista real, por lo que se espera que este método no debe usarse si se quiere modificar la lista.
-    pub fn list_tickers(&self) -> Vec<Ticker> {
-        self.tickers.clone()
+    pub fn list_tickers(&self) -> Vec<TickerSummary> {
+        self.tickers.iter().map(TickerSummary::from).collect()
     }
 
     /// Crea un nuevo ticker (o nicho) en el mercado y lo mete a la lista. El ID del ticker se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
-    pub fn add_ticker(&mut self, name: &str, description: &str) -> Ticker {
-        let ticker = Ticker::new(
+    pub fn add_ticker(&mut self, author: i32, name: &str, description: &str) -> Ticker {
+        let mut ticker = Ticker::new(
             self.next_ticker_id,
+            author,
             name.to_string(),
             description.to_string(),
         );
+
+        ticker.transactions.push(Transaction {
+            author,
+            date: chrono::Utc::now().timestamp(),
+            transaction_type: TransactionType::Creation,
+        });
+
         println!("(+) Ticker '{name}' created (ID: {})", self.next_ticker_id);
         self.next_ticker_id += 1;
         self.tickers.push(ticker.clone());
+
         ticker
     }
 
@@ -125,6 +153,12 @@ impl Market {
             "(!) User '{}' just bought {amount} actions to '{}'",
             user.name, ticker.name
         );
+
+        ticker.transactions.push(Transaction {
+            author: user.id,
+            date: chrono::Utc::now().timestamp(),
+            transaction_type: TransactionType::Buy(amount),
+        });
 
         Ok(TransactionResult {
             user: user.clone(),
@@ -180,6 +214,12 @@ impl Market {
             user.name, ticker.name
         );
 
+        ticker.transactions.push(Transaction {
+            author: user.id,
+            date: chrono::Utc::now().timestamp(),
+            transaction_type: TransactionType::Sell(amount),
+        });
+
         Ok(TransactionResult {
             user: user.clone(),
             ticker: ticker.clone(),
@@ -196,7 +236,7 @@ mod tests {
         let mut market = Market::new();
         let user = market.add_user("John Market");
         market.set_money_for_user(user.id, 600).unwrap();
-        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+        let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
 
         let result = market.buy_actions(user.id, ticker.id, 5);
 
@@ -216,7 +256,7 @@ mod tests {
     fn user_cant_buy_if_not_enough_money() {
         let mut market = Market::new();
         let user = market.add_user("John Market");
-        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+        let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
 
         let result = market.buy_actions(user.id, ticker.id, 5);
 
@@ -235,7 +275,7 @@ mod tests {
     fn user_cant_sell_if_not_enough_actions() {
         let mut market = Market::new();
         let user = market.add_user("John Market");
-        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+        let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
         market.set_money_for_user(user.id, 600).unwrap();
         market.buy_actions(user.id, ticker.id, 5).unwrap();
 
@@ -257,7 +297,7 @@ mod tests {
     fn user_can_sell_if_enough_actions() {
         let mut market = Market::new();
         let user = market.add_user("John Market");
-        let ticker = market.add_ticker("Ticker", "Wooba Looba Dup Dup!");
+        let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
         market.set_money_for_user(user.id, 600).unwrap();
         market.buy_actions(user.id, ticker.id, 5).unwrap();
 
