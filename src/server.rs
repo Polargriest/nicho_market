@@ -93,6 +93,16 @@ async fn sell_actions_endpoint(
     Ok(Json(result))
 }
 
+async fn add_ticker(
+    State(store): State<Arc<Mutex<Market>>>,
+    Path((name, description)): Path<(String, String)>,
+    AuthenticatedUser(_): AuthenticatedUser,
+) -> Json<Ticker> {
+    let result = store.lock().unwrap().add_ticker(&name, &description);
+
+    Json(result)
+}
+
 pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
     Router::new()
         .route("/health", get(health_check))
@@ -100,5 +110,6 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/users", get(get_users))
         .route("/buy/{ticker_id}/{amount}", post(buy_actions_endpoint))
         .route("/sell/{ticker_id}/{amount}", post(sell_actions_endpoint))
+        .route("/add_ticker/{name}/{description}", post(add_ticker))
         .with_state(market)
 }
