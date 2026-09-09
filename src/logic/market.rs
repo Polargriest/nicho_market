@@ -39,6 +39,7 @@ impl From<&Ticker> for TickerSummary {
 pub struct UserSummary {
     name: String,
     nicho_coins: i32,
+    actions: i32,
 }
 
 impl From<&User> for UserSummary {
@@ -46,6 +47,7 @@ impl From<&User> for UserSummary {
         Self {
             name: value.name.clone(),
             nicho_coins: value.nicho_coins,
+            actions: value.portfolio.values().sum(),
         }
     }
 }
