@@ -131,7 +131,6 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/health", get(health_check))
         .route("/tickers", get(get_tickers_endpoint))
         .route("/ticker/{id}", get(get_ticker_endpoint))
-        .route("/tickers/{id}", get(get_tickers_endpoint))
         .route("/users", get(get_users))
         .route("/buy/{ticker_id}/{amount}", post(buy_actions_endpoint))
         .route("/sell/{ticker_id}/{amount}", post(sell_actions_endpoint))
