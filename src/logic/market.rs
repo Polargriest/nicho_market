@@ -17,6 +17,7 @@ pub struct Market {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TickerSummary {
     name: String,
     description: String,
@@ -29,6 +30,24 @@ impl From<&Ticker> for TickerSummary {
             name: value.name.clone(),
             description: value.description.clone(),
             actions: value.actions,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserSummary {
+    name: String,
+    nicho_coins: i32,
+    actions: i32,
+}
+
+impl From<&User> for UserSummary {
+    fn from(value: &User) -> Self {
+        Self {
+            name: value.name.clone(),
+            nicho_coins: value.nicho_coins,
+            actions: value.portfolio.values().sum(),
         }
     }
 }
@@ -50,8 +69,8 @@ impl Market {
 
     /// Regresa una lista de todos los usuarios en un vector. Nota que se crea un clon de la lista real,
     /// por lo que se espera que este método no debe usarse si se quiere modificar la lista.
-    pub fn list_users(&self) -> Vec<User> {
-        self.users.clone()
+    pub fn list_users(&self) -> Vec<UserSummary> {
+        self.users.iter().map(UserSummary::from).collect()
     }
 
     /// Regresa una referencia mutable a un usuario del mercado. La referencia que se regresa apunta
@@ -78,6 +97,17 @@ impl Market {
         self.next_user_id += 1;
         self.users.push(user.clone());
         user
+    }
+
+    /// Establece una cierta cantidad de dinero al usuario con el ID especificado.
+    pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
+        let user = self.get_user_by_id(user_id)?;
+        user.nicho_coins = money;
+        Ok(())
+    }
+
+    pub fn user_data_by_id(&self, id: i32) -> Option<User> {
+        self.users.iter().find(|u| u.id == id).cloned()
     }
 
     //// TICKERS ////
@@ -111,10 +141,8 @@ impl Market {
         ticker
     }
 
-    pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
-        let user = self.get_user_by_id(user_id)?;
-        user.nicho_coins = money;
-        Ok(())
+    pub fn get_ticker_by_id(&self, id: i32) -> Option<Ticker> {
+        self.tickers.iter().find(|t| t.id == id).cloned()
     }
 
     //// NEGOCIO ////
