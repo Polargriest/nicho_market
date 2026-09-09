@@ -17,6 +17,7 @@ pub struct Market {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TickerSummary {
     name: String,
     description: String,
@@ -29,6 +30,22 @@ impl From<&Ticker> for TickerSummary {
             name: value.name.clone(),
             description: value.description.clone(),
             actions: value.actions,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserSummary {
+    name: String,
+    nicho_coins: i32,
+}
+
+impl From<&User> for UserSummary {
+    fn from(value: &User) -> Self {
+        Self {
+            name: value.name.clone(),
+            nicho_coins: value.nicho_coins,
         }
     }
 }
@@ -50,8 +67,8 @@ impl Market {
 
     /// Regresa una lista de todos los usuarios en un vector. Nota que se crea un clon de la lista real,
     /// por lo que se espera que este método no debe usarse si se quiere modificar la lista.
-    pub fn list_users(&self) -> Vec<User> {
-        self.users.clone()
+    pub fn list_users(&self) -> Vec<UserSummary> {
+        self.users.iter().map(UserSummary::from).collect()
     }
 
     /// Regresa una referencia mutable a un usuario del mercado. La referencia que se regresa apunta
