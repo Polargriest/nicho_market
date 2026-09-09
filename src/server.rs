@@ -26,8 +26,21 @@ async fn health_check() -> impl IntoResponse {
     }))
 }
 
-async fn get_users(State(store): State<Arc<Mutex<Market>>>) -> impl IntoResponse {
+async fn get_users_endpoint(State(store): State<Arc<Mutex<Market>>>) -> impl IntoResponse {
     Json(store.lock().unwrap().list_users())
+}
+
+async fn get_user_endpoint(
+    State(store): State<Arc<Mutex<Market>>>,
+    Path(id): Path<i32>,
+) -> Result<Json<User>, ApiError> {
+    let user = store
+        .lock()
+        .unwrap()
+        .user_data_by_id(id)
+        .ok_or(ApiError::UserNotFound(id))?;
+
+    Ok(Json(user))
 }
 
 async fn get_tickers_endpoint(State(store): State<Arc<Mutex<Market>>>) -> impl IntoResponse {
@@ -131,7 +144,8 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/health", get(health_check))
         .route("/tickers", get(get_tickers_endpoint))
         .route("/ticker/{id}", get(get_ticker_endpoint))
-        .route("/users", get(get_users))
+        .route("/users", get(get_users_endpoint))
+        .route("/user/{id}", get(get_user_endpoint))
         .route("/buy/{ticker_id}/{amount}", post(buy_actions_endpoint))
         .route("/sell/{ticker_id}/{amount}", post(sell_actions_endpoint))
         .route("/add_ticker", post(add_ticker))

@@ -87,6 +87,10 @@ impl Market {
         Ok(())
     }
 
+    pub fn user_data_by_id(&self, id: i32) -> Option<User> {
+        self.users.iter().find(|u| u.id == id).cloned()
+    }
+
     //// TICKERS ////
 
     /// Regresa una lista de todos los tickers (o nichos) en un vector. Nota que se crea un clon de la
