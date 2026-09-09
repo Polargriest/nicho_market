@@ -46,9 +46,20 @@ impl User {
         Self {
             id,
             name,
+            admin: false,
             nicho_coins: 0,
             portfolio: HashMap::new(),
             token: Uuid::new_v4().to_string(),
+        }
+    }
+
+    pub fn set_admin(&mut self, admin: bool) {
+        self.admin = admin;
+
+        if admin {
+            println!("(!) User '{}' is now an administrator.", self.name);
+        } else {
+            println!("(!) User '{}' is no longer an administrator.", self.name);
         }
     }
 }

@@ -22,6 +22,7 @@ pub struct User {
     pub name: String,
     pub nicho_coins: i32,
     pub portfolio: HashMap<i32, i32>,
+    pub admin: bool,
     #[serde(skip_serializing)]
     pub token: String,
 }

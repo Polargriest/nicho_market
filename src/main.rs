@@ -16,6 +16,7 @@ fn setup() -> Market {
     store.add_ticker(0, "Joge", "La estamos rompiendo");
     store.add_user("Edy Figueroa");
     store.add_user("Quintero Nose");
+    store.set_admin_perms(0, true).unwrap();
     store.set_money_for_user(0, 100_000).unwrap();
     store.set_money_for_user(1, 100_000).unwrap();
 

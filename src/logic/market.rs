@@ -40,6 +40,7 @@ pub struct UserSummary {
     name: String,
     nicho_coins: i32,
     actions: i32,
+    admin: bool,
 }
 
 impl From<&User> for UserSummary {
@@ -47,6 +48,7 @@ impl From<&User> for UserSummary {
         Self {
             name: value.name.clone(),
             nicho_coins: value.nicho_coins,
+            admin: value.admin,
             actions: value.portfolio.values().sum(),
         }
     }
@@ -103,6 +105,12 @@ impl Market {
     pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
         let user = self.get_user_by_id(user_id)?;
         user.nicho_coins = money;
+        Ok(())
+    }
+
+    pub fn set_admin_perms(&mut self, user_id: i32, admin: bool) -> Result<(), ApiError> {
+        let user = self.get_user_by_id(user_id)?;
+        user.set_admin(admin);
         Ok(())
     }
 
