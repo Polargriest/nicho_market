@@ -3,7 +3,10 @@ mod schema;
 mod server;
 
 use crate::server::create_app;
-use std::sync::{Arc, Mutex};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 
 use crate::logic::market::Market;
 
@@ -30,7 +33,10 @@ async fn main() {
 
     println!("Server running on http://localhost:3000");
 
-    axum::serve(listener, app)
-        .await
-        .expect("failed to start server")
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }

@@ -7,6 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
+use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 use crate::{
     logic::{errors::ApiError, market::Market},
@@ -140,14 +141,38 @@ async fn add_ticker(
 }
 
 pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
-    Router::new()
-        .route("/health", get(health_check))
+    let read_config = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(1)
+            .burst_size(30)
+            .finish()
+            .unwrap(),
+    );
+
+    let write_config = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(6)
+            .burst_size(5)
+            .finish()
+            .unwrap(),
+    );
+
+    let read_router = Router::new()
         .route("/tickers", get(get_tickers_endpoint))
         .route("/ticker/{id}", get(get_ticker_endpoint))
         .route("/users", get(get_users_endpoint))
         .route("/user/{id}", get(get_user_endpoint))
+        .layer(GovernorLayer::new(read_config));
+
+    let write_router = Router::new()
         .route("/buy/{ticker_id}/{amount}", post(buy_actions_endpoint))
         .route("/sell/{ticker_id}/{amount}", post(sell_actions_endpoint))
         .route("/add_ticker", post(add_ticker))
+        .layer(GovernorLayer::new(write_config));
+
+    Router::new()
+        .route("/health", get(health_check))
+        .merge(read_router)
+        .merge(write_router)
         .with_state(market)
 }
