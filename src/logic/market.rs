@@ -101,6 +101,10 @@ impl Market {
         user
     }
 
+    pub fn is_user_admin(&self, user_id: i32) -> bool {
+        self.user_data_by_id(user_id).is_some_and(|u| u.admin)
+    }
+
     /// Establece una cierta cantidad de dinero al usuario con el ID especificado.
     pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
         let user = self.get_user_by_id(user_id)?;
@@ -147,6 +151,32 @@ impl Market {
         self.tickers.push(ticker.clone());
 
         ticker
+    }
+
+    pub fn remove_ticker(&mut self, ticker_id: i32) -> Result<Ticker, ApiError> {
+        let ticker = self
+            .get_ticker_by_id(ticker_id)
+            .ok_or(ApiError::TickerNotFound(ticker_id))?;
+
+        // revert all transactions
+        for transaction in ticker.transactions.iter().rev() {
+            match transaction.transaction_type {
+                TransactionType::Buy(amount) => {
+                    self.sell_actions(transaction.author, ticker_id, amount)?;
+                }
+                TransactionType::Sell(amount) => {
+                    self.buy_actions(transaction.author, ticker_id, amount)?;
+                }
+                _ => continue,
+            }
+        }
+
+        // get_ticker_by_id already checks if ID exists, so its safe to unwrap
+        let pos = self.tickers.iter().position(|t| t.id == ticker_id).unwrap();
+        self.tickers.remove(pos);
+
+        println!("(+) Ticker '{}' was removed", ticker.name);
+        Ok(ticker)
     }
 
     pub fn get_ticker_by_id(&self, id: i32) -> Option<Ticker> {
