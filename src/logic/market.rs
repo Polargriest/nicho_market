@@ -80,6 +80,13 @@ impl Market {
         user
     }
 
+    /// Establece una cierta cantidad de dinero al usuario con el ID especificado.
+    pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
+        let user = self.get_user_by_id(user_id)?;
+        user.nicho_coins = money;
+        Ok(())
+    }
+
     //// TICKERS ////
 
     /// Regresa una lista de todos los tickers (o nichos) en un vector. Nota que se crea un clon de la
@@ -111,10 +118,8 @@ impl Market {
         ticker
     }
 
-    pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
-        let user = self.get_user_by_id(user_id)?;
-        user.nicho_coins = money;
-        Ok(())
+    pub fn get_ticker_by_id(&self, id: i32) -> Option<Ticker> {
+        self.tickers.iter().find(|t| t.id == id).cloned()
     }
 
     //// NEGOCIO ////
