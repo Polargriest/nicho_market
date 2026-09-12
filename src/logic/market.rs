@@ -40,6 +40,7 @@ pub struct UserSummary {
     name: String,
     nicho_coins: i32,
     actions: i32,
+    admin: bool,
 }
 
 impl From<&User> for UserSummary {
@@ -47,6 +48,7 @@ impl From<&User> for UserSummary {
         Self {
             name: value.name.clone(),
             nicho_coins: value.nicho_coins,
+            admin: value.admin,
             actions: value.portfolio.values().sum(),
         }
     }
@@ -99,10 +101,43 @@ impl Market {
         user
     }
 
+    pub fn remove_user(&mut self, user_id: i32) -> Result<User, ApiError> {
+        let user = self.get_user_by_id(user_id)?.clone();
+
+        // discount user's actions on every single ticker he owns.
+        for (ticker_id, actions) in &user.portfolio {
+            // tickers in user's portfolios must be valid, since even deleting tickers
+            // removes it from user's portfolios.
+            let ticker = self
+                .tickers
+                .iter_mut()
+                .find(|t| t.id == *ticker_id)
+                .unwrap();
+            ticker.actions -= actions;
+        }
+
+        // get_user_by_id already checks if ID exists, so its safe to unwrap.
+        let pos = self.users.iter().position(|u| u.id == user_id).unwrap();
+        self.users.remove(pos);
+
+        println!("(-) User '{}' was removed", user.name);
+        Ok(user)
+    }
+
+    pub fn is_user_admin(&self, user_id: i32) -> bool {
+        self.user_data_by_id(user_id).is_some_and(|u| u.admin)
+    }
+
     /// Establece una cierta cantidad de dinero al usuario con el ID especificado.
     pub fn set_money_for_user(&mut self, user_id: i32, money: i32) -> Result<(), ApiError> {
         let user = self.get_user_by_id(user_id)?;
         user.nicho_coins = money;
+        Ok(())
+    }
+
+    pub fn set_admin_perms(&mut self, user_id: i32, admin: bool) -> Result<(), ApiError> {
+        let user = self.get_user_by_id(user_id)?;
+        user.set_admin(admin);
         Ok(())
     }
 
@@ -139,6 +174,38 @@ impl Market {
         self.tickers.push(ticker.clone());
 
         ticker
+    }
+
+    pub fn remove_ticker(&mut self, ticker_id: i32) -> Result<Ticker, ApiError> {
+        let ticker = self
+            .get_ticker_by_id(ticker_id)
+            .ok_or(ApiError::TickerNotFound(ticker_id))?;
+
+        // revert all transactions: refund pool proportional to holdings.
+        // this was written by Claude.
+        let mut refund_pool = ticker.price_for_selling(ticker.actions)?;
+        let mut remaining_actions = ticker.actions;
+
+        for user in self.users.iter_mut() {
+            let Some(&amount) = user.portfolio.get(&ticker_id) else {
+                continue;
+            };
+
+            let refund = refund_pool * amount / remaining_actions;
+            user.nicho_coins += refund;
+
+            refund_pool -= refund;
+            remaining_actions -= amount;
+
+            user.portfolio.remove(&ticker_id);
+        }
+
+        // get_ticker_by_id already checks if ID exists, so its safe to unwrap
+        let pos = self.tickers.iter().position(|t| t.id == ticker_id).unwrap();
+        self.tickers.remove(pos);
+
+        println!("(-) Ticker '{}' was removed", ticker.name);
+        Ok(ticker)
     }
 
     pub fn get_ticker_by_id(&self, id: i32) -> Option<Ticker> {

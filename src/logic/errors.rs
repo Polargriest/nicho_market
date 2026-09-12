@@ -4,6 +4,7 @@ use serde_json::json;
 #[derive(Debug)]
 pub enum ApiError {
     Unauthorized,
+    Forbidden,
     NotAffordable,
     NotEnoughActions,
     UserNotFound(i32),
@@ -16,6 +17,10 @@ impl IntoResponse for ApiError {
             ApiError::Unauthorized => (
                 StatusCode::UNAUTHORIZED,
                 "user is not authentificated".to_string(),
+            ),
+            ApiError::Forbidden => (
+                StatusCode::FORBIDDEN,
+                "user does not have enough permissions".to_string(),
             ),
             ApiError::NotAffordable => (
                 StatusCode::BAD_REQUEST,
