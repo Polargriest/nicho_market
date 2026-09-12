@@ -101,6 +101,29 @@ impl Market {
         user
     }
 
+    pub fn remove_user(&mut self, user_id: i32) -> Result<User, ApiError> {
+        let user = self.get_user_by_id(user_id)?.clone();
+
+        // discount user's actions on every single ticker he owns.
+        for (ticker_id, actions) in &user.portfolio {
+            // tickers in user's portfolios must be valid, since even deleting tickers
+            // removes it from user's portfolios.
+            let ticker = self
+                .tickers
+                .iter_mut()
+                .find(|t| t.id == *ticker_id)
+                .unwrap();
+            ticker.actions -= actions;
+        }
+
+        // get_user_by_id already checks if ID exists, so its safe to unwrap.
+        let pos = self.users.iter().position(|u| u.id == user_id).unwrap();
+        self.users.remove(pos);
+
+        println!("(-) User '{}' was removed", user.name);
+        Ok(user)
+    }
+
     pub fn is_user_admin(&self, user_id: i32) -> bool {
         self.user_data_by_id(user_id).is_some_and(|u| u.admin)
     }

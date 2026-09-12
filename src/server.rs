@@ -161,6 +161,22 @@ async fn remove_ticker_endpoint(
     Ok(Json(result))
 }
 
+async fn remove_user_endpoint(
+    State(store): State<Arc<Mutex<Market>>>,
+    Path(user_id): Path<i32>,
+    AuthenticatedUser(auth_user_id): AuthenticatedUser,
+) -> Result<Json<User>, ApiError> {
+    let mut lock = store.lock().unwrap();
+
+    if !(lock.is_user_admin(auth_user_id) || user_id == auth_user_id) {
+        return Err(ApiError::Forbidden);
+    }
+
+    let result = lock.remove_user(user_id)?;
+
+    Ok(Json(result))
+}
+
 pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
     let read_config = Arc::new(
         GovernorConfigBuilder::default()
@@ -189,6 +205,7 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/buy/{ticker_id}/{amount}", post(buy_actions_endpoint))
         .route("/sell/{ticker_id}/{amount}", post(sell_actions_endpoint))
         .route("/remove_ticker/{ticker_id}", post(remove_ticker_endpoint))
+        .route("/remove_user/{user_id}", post(remove_user_endpoint))
         .route("/add_ticker", post(add_ticker))
         .layer(GovernorLayer::new(write_config));
 
