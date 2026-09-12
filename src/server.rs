@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
@@ -34,14 +34,23 @@ async fn get_users_endpoint(State(store): State<Arc<Mutex<Market>>>) -> impl Int
 async fn get_user_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     Path(id): Path<i32>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<Value>, ApiError> {
     let user = store
         .lock()
         .unwrap()
         .user_data_by_id(id)
         .ok_or(ApiError::UserNotFound(id))?;
 
-    Ok(Json(user))
+    // esto es muuuy flojo. No quise hacer otra estructura PublicUser para esto. Perdón.
+    let public_user = json!({
+        "id": user.id,
+        "name": user.name,
+        "nichoCoins": user.nicho_coins,
+        "portfolio": user.portfolio,
+        "admin": user.admin,
+    });
+
+    Ok(Json(public_user))
 }
 
 async fn get_tickers_endpoint(State(store): State<Arc<Mutex<Market>>>) -> impl IntoResponse {
