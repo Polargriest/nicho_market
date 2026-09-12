@@ -158,24 +158,30 @@ impl Market {
             .get_ticker_by_id(ticker_id)
             .ok_or(ApiError::TickerNotFound(ticker_id))?;
 
-        // revert all transactions
-        for transaction in ticker.transactions.iter().rev() {
-            match transaction.transaction_type {
-                TransactionType::Buy(amount) => {
-                    self.sell_actions(transaction.author, ticker_id, amount)?;
-                }
-                TransactionType::Sell(amount) => {
-                    self.buy_actions(transaction.author, ticker_id, amount)?;
-                }
-                _ => continue,
-            }
+        // revert all transactions: refund pool proportional to holdings.
+        // this was written by Claude.
+        let mut refund_pool = ticker.price_for_selling(ticker.actions)?;
+        let mut remaining_actions = ticker.actions;
+
+        for user in self.users.iter_mut() {
+            let Some(&amount) = user.portfolio.get(&ticker_id) else {
+                continue;
+            };
+
+            let refund = refund_pool * amount / remaining_actions;
+            user.nicho_coins += refund;
+
+            refund_pool -= refund;
+            remaining_actions -= amount;
+
+            user.portfolio.remove(&ticker_id);
         }
 
         // get_ticker_by_id already checks if ID exists, so its safe to unwrap
         let pos = self.tickers.iter().position(|t| t.id == ticker_id).unwrap();
         self.tickers.remove(pos);
 
-        println!("(+) Ticker '{}' was removed", ticker.name);
+        println!("(-) Ticker '{}' was removed", ticker.name);
         Ok(ticker)
     }
 
