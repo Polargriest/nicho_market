@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     logic::errors::ApiError,
@@ -8,6 +8,7 @@ use crate::{
 
 /// Esta estructura representa el mercado. Todos los tickers y los usuarios están guardados aquí.
 /// Las transacciones de todo el mercado también se hacen aquí.
+#[derive(Deserialize, Serialize)]
 pub struct Market {
     tickers: Vec<Ticker>,
     users: Vec<User>,
@@ -65,6 +66,32 @@ impl Market {
             next_ticker_id: 0,
             next_user_id: 0,
         }
+    }
+
+    pub fn load_market(path: &str) -> Self {
+        let Ok(contents) = std::fs::read_to_string(path) else {
+            println!("(~) Database not found. Creating new one...");
+            return Self::new();
+        };
+
+        let Ok(result) = serde_json::from_str::<Market>(&contents) else {
+            println!("(~) Database corrupted. Creating new one...");
+            return Self::new();
+        };
+
+        result
+    }
+
+    pub fn save_market(&self, path: &str) {
+        let Ok(contents) = serde_json::to_string_pretty(self) else {
+            println!("(~) Couldn't save market.");
+            return;
+        };
+
+        if let Err(e) = std::fs::write(path, contents) {
+            println!("(~) Couldn't save market. Writing to file failed: {e}");
+            return;
+        };
     }
 
     //// USUARIOS ////

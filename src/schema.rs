@@ -1,9 +1,9 @@
 //! Entidades que forman parte del dominio de la bolsa de valores de nichos. Elementos que
 //! Market maneja van en este módulo.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Ticker {
     pub id: i32,
@@ -15,7 +15,7 @@ pub struct Ticker {
     pub transactions: Vec<Transaction>,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: i32,
@@ -26,7 +26,7 @@ pub struct User {
     pub token: String,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub author: i32,
@@ -34,7 +34,7 @@ pub struct Transaction {
     pub transaction_type: TransactionType,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionType {
     Creation,
