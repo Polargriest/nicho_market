@@ -138,6 +138,33 @@ impl Market {
         self.users.iter().find(|u| u.token == token).map(|u| u.id)
     }
 
+    pub fn try_registering_user(
+        &mut self,
+        name: String,
+        password: String,
+        invite_code: String,
+    ) -> Result<User, ApiError> {
+        if !self.invite_codes.contains(&invite_code) {
+            return Err(ApiError::InvalidInviteCode(invite_code));
+        }
+
+        let usernames: Vec<&String> = self.users.iter().map(|user| &user.name).collect();
+
+        if usernames.contains(&&name) {
+            return Err(ApiError::UsernameAlreadyTaken(name));
+        }
+
+        // we already checked that the invite code exists
+        let pos = self
+            .invite_codes
+            .iter()
+            .position(|code| *code == invite_code)
+            .unwrap();
+        self.invite_codes.swap_remove(pos);
+
+        Ok(self.add_user(&name))
+    }
+
     /// Crea a un nuevo usuario en el mercado y lo mete a la lista. El ID del usuario se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
     pub fn add_user(&mut self, name: &str) -> User {

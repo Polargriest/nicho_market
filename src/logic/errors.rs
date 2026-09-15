@@ -9,6 +9,8 @@ pub enum ApiError {
     NotEnoughActions,
     UserNotFound(i32),
     TickerNotFound(i32),
+    InvalidInviteCode(String),
+    UsernameAlreadyTaken(String),
 }
 
 impl IntoResponse for ApiError {
@@ -37,6 +39,14 @@ impl IntoResponse for ApiError {
             ApiError::TickerNotFound(id) => (
                 StatusCode::NOT_FOUND,
                 format!("ticker with ID {id} not found"),
+            ),
+            ApiError::InvalidInviteCode(code) => (
+                StatusCode::BAD_REQUEST,
+                format!("the invitation code '{code}' is invalid"),
+            ),
+            ApiError::UsernameAlreadyTaken(name) => (
+                StatusCode::BAD_REQUEST,
+                format!("username '{name}' was already taken"),
             ),
         };
 
