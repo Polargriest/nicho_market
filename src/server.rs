@@ -1,15 +1,17 @@
 use axum::{
     Json, Router,
-    extract::{FromRequestParts, Path, State},
-    response::IntoResponse,
+    extract::{FromRequestParts, Path, Request, State},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 use crate::{
+    DATABASE_PATH,
     logic::{errors::ApiError, market::Market},
     schema::{Ticker, User},
 };
@@ -34,14 +36,23 @@ async fn get_users_endpoint(State(store): State<Arc<Mutex<Market>>>) -> impl Int
 async fn get_user_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     Path(id): Path<i32>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<Value>, ApiError> {
     let user = store
         .lock()
         .unwrap()
         .user_data_by_id(id)
         .ok_or(ApiError::UserNotFound(id))?;
 
-    Ok(Json(user))
+    // esto es muuuy flojo. No quise hacer otra estructura PublicUser para esto. Perdón.
+    let public_user = json!({
+        "id": user.id,
+        "name": user.name,
+        "nichoCoins": user.nicho_coins,
+        "portfolio": user.portfolio,
+        "admin": user.admin,
+    });
+
+    Ok(Json(public_user))
 }
 
 async fn get_tickers_endpoint(State(store): State<Arc<Mutex<Market>>>) -> impl IntoResponse {
@@ -177,6 +188,18 @@ async fn remove_user_endpoint(
     Ok(Json(result))
 }
 
+// this function was written by Claude. This function is called on every request, so every writting
+// function can automatically save the market state.
+async fn persist_after_writing(
+    State(store): State<Arc<Mutex<Market>>>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let response = next.run(request).await;
+    store.lock().unwrap().save_market(DATABASE_PATH);
+    response
+}
+
 pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
     let read_config = Arc::new(
         GovernorConfigBuilder::default()
@@ -207,7 +230,11 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/remove_ticker/{ticker_id}", post(remove_ticker_endpoint))
         .route("/remove_user/{user_id}", post(remove_user_endpoint))
         .route("/add_ticker", post(add_ticker))
-        .layer(GovernorLayer::new(write_config));
+        .layer(GovernorLayer::new(write_config))
+        .layer(middleware::from_fn_with_state(
+            market.clone(),
+            persist_after_writing,
+        ));
 
     Router::new()
         .route("/health", get(health_check))
