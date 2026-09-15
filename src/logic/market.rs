@@ -1,3 +1,4 @@
+use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -15,6 +16,8 @@ pub struct Market {
 
     next_ticker_id: i32,
     next_user_id: i32,
+
+    invite_codes: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -65,7 +68,21 @@ impl Market {
             users: Vec::new(),
             next_ticker_id: 0,
             next_user_id: 0,
+            invite_codes: Self::generate_invite_codes(5),
         }
+    }
+
+    pub fn generate_invite_codes(quantity: i32) -> Vec<String> {
+        let mut invite_codes = Vec::new();
+
+        for _ in 0..quantity {
+            let random_string = Alphanumeric
+                .sample_string(&mut rand::rng(), 6)
+                .to_uppercase();
+            invite_codes.push(random_string);
+        }
+
+        invite_codes
     }
 
     pub fn load_market(path: &str) -> Self {
