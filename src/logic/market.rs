@@ -79,6 +79,7 @@ impl Market {
             return Self::new();
         };
 
+        println!("(~) Database loaded!");
         result
     }
 
@@ -92,6 +93,8 @@ impl Market {
             println!("(~) Couldn't save market. Writing to file failed: {e}");
             return;
         };
+
+        println!("(~) Database saved!");
     }
 
     //// USUARIOS ////
