@@ -5,6 +5,8 @@ use serde_json::json;
 pub enum ApiError {
     Unauthorized,
     Forbidden,
+    BadRequest,
+    InternalError,
     NotAffordable,
     NotEnoughActions,
     UserNotFound(i32),
@@ -56,6 +58,14 @@ impl IntoResponse for ApiError {
             ApiError::WrongPassword => {
                 (StatusCode::BAD_REQUEST, format!("wrong password for user"))
             }
+            ApiError::BadRequest => (
+                StatusCode::BAD_REQUEST,
+                format!("the request has not the correct format"),
+            ),
+            ApiError::InternalError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("something weird happened in our end"),
+            ),
         };
 
         let body = Json(json!({

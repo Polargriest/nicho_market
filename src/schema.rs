@@ -13,6 +13,7 @@ pub struct Ticker {
 
     pub author: i32,
     pub transactions: Vec<Transaction>,
+    pub image_filename: Option<String>,
 }
 
 #[derive(Serialize, Clone, Deserialize)]
