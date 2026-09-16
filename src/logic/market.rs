@@ -162,13 +162,13 @@ impl Market {
             .unwrap();
         self.invite_codes.swap_remove(pos);
 
-        Ok(self.add_user(&name))
+        Ok(self.add_user(&name, &password))
     }
 
     /// Crea a un nuevo usuario en el mercado y lo mete a la lista. El ID del usuario se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
-    pub fn add_user(&mut self, name: &str) -> User {
-        let user = User::new(self.next_user_id, name.to_string());
+    pub fn add_user(&mut self, name: &str, password: &str) -> User {
+        let user = User::new(self.next_user_id, name, password);
         println!("(+) User '{name}' created (Token: {})", user.token);
         self.next_user_id += 1;
         self.users.push(user.clone());
@@ -230,12 +230,7 @@ impl Market {
     /// Crea un nuevo ticker (o nicho) en el mercado y lo mete a la lista. El ID del ticker se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
     pub fn add_ticker(&mut self, author: i32, name: &str, description: &str) -> Ticker {
-        let mut ticker = Ticker::new(
-            self.next_ticker_id,
-            author,
-            name.to_string(),
-            description.to_string(),
-        );
+        let mut ticker = Ticker::new(self.next_ticker_id, author, name, description);
 
         ticker.transactions.push(Transaction {
             author,
@@ -403,7 +398,7 @@ mod tests {
     #[test]
     fn user_can_buy_if_enough_money() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         market.set_money_for_user(user.id, 600).unwrap();
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
 
@@ -424,7 +419,7 @@ mod tests {
     #[test]
     fn user_cant_buy_if_not_enough_money() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
 
         let result = market.buy_actions(user.id, ticker.id, 5);
@@ -443,7 +438,7 @@ mod tests {
     #[test]
     fn user_cant_sell_if_not_enough_actions() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
         market.set_money_for_user(user.id, 600).unwrap();
         market.buy_actions(user.id, ticker.id, 5).unwrap();
@@ -465,7 +460,7 @@ mod tests {
     #[test]
     fn user_can_sell_if_enough_actions() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
         market.set_money_for_user(user.id, 600).unwrap();
         market.buy_actions(user.id, ticker.id, 5).unwrap();

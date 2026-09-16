@@ -10,11 +10,11 @@ const INCREASE_RATE: i32 = 10;
 pub const BASE_PRICE: i32 = 100;
 
 impl Ticker {
-    pub fn new(id: i32, author: i32, name: String, description: String) -> Self {
+    pub fn new(id: i32, author: i32, name: &str, description: &str) -> Self {
         Self {
             id,
-            name,
-            description,
+            name: name.to_string(),
+            description: description.to_string(),
             author,
             actions: 0,
             transactions: Vec::new(),
@@ -42,14 +42,15 @@ impl Ticker {
 }
 
 impl User {
-    pub fn new(id: i32, name: String) -> Self {
+    pub fn new(id: i32, name: &str, password: &str) -> Self {
         Self {
             id,
-            name,
+            name: name.to_string(),
             admin: false,
             nicho_coins: 0,
             portfolio: HashMap::new(),
             token: Uuid::new_v4().to_string(),
+            password: password.to_string(),
         }
     }
 
@@ -70,7 +71,7 @@ mod tests {
 
     #[test]
     fn correct_buy_price_for_new_ticker() {
-        let ticker = Ticker::new(0, 0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        let ticker = Ticker::new(0, 0, "$JOGE", "Dummy niche.");
         let result = ticker.price_for_buying(5);
 
         assert_eq!(result, 600);
@@ -78,7 +79,7 @@ mod tests {
 
     #[test]
     fn correct_buy_price_for_ticker() {
-        let mut ticker = Ticker::new(0, 0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        let mut ticker = Ticker::new(0, 0, "$JOGE", "Dummy niche.");
         ticker.actions = 5;
         let result = ticker.price_for_buying(5);
 
@@ -87,7 +88,7 @@ mod tests {
 
     #[test]
     fn correct_buy_price_when_buying_one() {
-        let ticker = Ticker::new(0, 0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        let ticker = Ticker::new(0, 0, "$JOGE", "Dummy niche.");
         let result = ticker.price_for_buying(1);
 
         assert_eq!(result, 100);
@@ -95,7 +96,7 @@ mod tests {
 
     #[test]
     fn correct_sell_price_for_ticker() {
-        let mut ticker = Ticker::new(0, 0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        let mut ticker = Ticker::new(0, 0, "$JOGE", "Dummy niche.");
         ticker.actions = 10;
         let result = ticker.price_for_selling(10).unwrap();
 
@@ -104,7 +105,7 @@ mod tests {
 
     #[test]
     fn ticker_has_not_enough_actions_when_selling() {
-        let ticker = Ticker::new(0, 0, "$JOGE".to_string(), "Dummy niche.".to_string());
+        let ticker = Ticker::new(0, 0, "$JOGE", "Dummy niche.");
         let result = ticker.price_for_selling(5);
 
         assert!(result.is_err())
