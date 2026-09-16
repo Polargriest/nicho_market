@@ -166,13 +166,11 @@ impl Market {
     }
 
     pub fn validate_credentials(&self, name: String, password: String) -> Result<String, ApiError> {
-        let usernames: Vec<&String> = self.users.iter().map(|user| &user.name).collect();
-        if !usernames.contains(&&name) {
-            return Err(ApiError::UnregisteredUser);
-        }
-
-        // we already checked user exists, so its safe to unwrap
-        let user = self.users.iter().find(|user| user.name == name).unwrap();
+        let user = self
+            .users
+            .iter()
+            .find(|user| user.name == name)
+            .ok_or(ApiError::UnregisteredUser)?;
         if user.password != password {
             return Err(ApiError::WrongPassword);
         }

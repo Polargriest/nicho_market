@@ -196,16 +196,16 @@ struct RegistrationRequest {
     invite_code: String,
 }
 
-async fn sign_in_endpoint(
+async fn register_user_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     contents: Json<RegistrationRequest>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<String>, ApiError> {
     let result = store.lock().unwrap().try_registering_user(
         contents.name.clone(),
         contents.password.clone(),
         contents.invite_code.clone(),
     )?;
-    Ok(Json(result))
+    Ok(Json(result.token))
 }
 
 #[derive(Deserialize)]
@@ -268,7 +268,7 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/remove_ticker/{ticker_id}", post(remove_ticker_endpoint))
         .route("/remove_user/{user_id}", post(remove_user_endpoint))
         .route("/add_ticker", post(add_ticker))
-        .route("/sign_in", post(sign_in_endpoint))
+        .route("/register_user", post(register_user_endpoint))
         .route("/log_in", post(log_in_endpoint))
         .layer(GovernorLayer::new(write_config))
         .layer(middleware::from_fn_with_state(
