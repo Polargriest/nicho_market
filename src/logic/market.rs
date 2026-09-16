@@ -171,9 +171,10 @@ impl Market {
             .iter()
             .find(|user| user.name == name)
             .ok_or(ApiError::UnregisteredUser)?;
-        if user.password != password {
+
+        if !user.verify_password(&password) {
             return Err(ApiError::WrongPassword);
-        }
+        };
 
         Ok(user.token.clone())
     }

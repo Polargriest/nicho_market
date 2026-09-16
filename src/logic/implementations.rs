@@ -1,3 +1,6 @@
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use rand_core::OsRng;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -43,6 +46,14 @@ impl Ticker {
 
 impl User {
     pub fn new(id: i32, name: &str, password: &str) -> Self {
+        // hash the password
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        let hashed_password = argon2
+            .hash_password(password.as_bytes(), &salt)
+            .unwrap()
+            .to_string();
+
         Self {
             id,
             name: name.to_string(),
@@ -50,8 +61,16 @@ impl User {
             nicho_coins: 0,
             portfolio: HashMap::new(),
             token: Uuid::new_v4().to_string(),
-            password: password.to_string(),
+            password: hashed_password,
         }
+    }
+
+    pub fn verify_password(&self, password: &str) -> bool {
+        let parsed_hash = PasswordHash::new(&self.password).unwrap();
+        let argon2 = Argon2::default();
+        argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok()
     }
 
     pub fn set_admin(&mut self, admin: bool) {
