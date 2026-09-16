@@ -1,6 +1,6 @@
 use axum::{
     Json, Router,
-    extract::{FromRequestParts, Path, Request, State},
+    extract::{FromRequestParts, Multipart, Path, Request, State},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
+use uuid::Uuid;
 
 use crate::{
     DATABASE_PATH,
@@ -105,12 +106,12 @@ impl FromRequestParts<Arc<Mutex<Market>>> for AuthenticatedUser {
     }
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AddTickerRequest {
-    name: String,
-    description: String,
-}
+// #[derive(Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// struct AddTickerRequest {
+//     name: String,
+//     description: String,
+// }
 
 async fn buy_actions_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
@@ -141,14 +142,42 @@ async fn sell_actions_endpoint(
 async fn add_ticker(
     State(store): State<Arc<Mutex<Market>>>,
     AuthenticatedUser(user_id): AuthenticatedUser,
-    contents: Json<AddTickerRequest>,
-) -> Json<Ticker> {
+    mut multipart: Multipart,
+) -> Result<Json<Ticker>, ApiError> {
+    let mut name = None;
+    let mut description = None;
+    let mut image = None;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| ApiError::BadRequest)?
+    {
+        match field.name() {
+            Some("name") => name = Some(field.text().await.map_err(|_| ApiError::BadRequest)?),
+            Some("description") => {
+                description = Some(field.text().await.map_err(|_| ApiError::BadRequest)?)
+            }
+            Some("image") => {
+                let bytes = field.bytes().await.map_err(|_| ApiError::BadRequest)?;
+                let filename = format!("{}.png", Uuid::new_v4());
+                std::fs::write(format!("images/tickers/{}", filename), bytes)
+                    .map_err(|_| ApiError::InternalError)?;
+                image = Some(filename);
+            }
+            _ => continue,
+        }
+    }
+
+    let name = name.ok_or(ApiError::BadRequest)?;
+    let description = description.ok_or(ApiError::BadRequest)?;
+
     let result = store
         .lock()
         .unwrap()
-        .add_ticker(user_id, &contents.name, &contents.description);
+        .add_ticker(user_id, &name, &description, image);
 
-    Json(result)
+    Ok(Json(result))
 }
 
 async fn remove_ticker_endpoint(
