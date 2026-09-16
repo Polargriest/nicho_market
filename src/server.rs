@@ -1,6 +1,7 @@
 use axum::{
     Json, Router,
     extract::{FromRequestParts, Multipart, Path, Request, State},
+    http::{HeaderValue, Method},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -9,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
+use tower_http::cors::CorsLayer;
 use uuid::Uuid;
 
 use crate::{
@@ -284,6 +286,11 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
             .unwrap(),
     );
 
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers(tower_http::cors::Any);
+
     let read_router = Router::new()
         .route("/tickers", get(get_tickers_endpoint))
         .route("/ticker/{id}", get(get_ticker_endpoint))
@@ -309,5 +316,6 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/health", get(health_check))
         .merge(read_router)
         .merge(write_router)
+        .layer(cors)
         .with_state(market)
 }
