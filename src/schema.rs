@@ -23,6 +23,7 @@ pub struct User {
     pub nicho_coins: i32,
     pub portfolio: HashMap<i32, i32>,
     pub admin: bool,
+    pub password: String,
     pub token: String,
 }
 

@@ -9,6 +9,10 @@ pub enum ApiError {
     NotEnoughActions,
     UserNotFound(i32),
     TickerNotFound(i32),
+    InvalidInviteCode(String),
+    UsernameAlreadyTaken(String),
+    UnregisteredUser,
+    WrongPassword,
 }
 
 impl IntoResponse for ApiError {
@@ -38,6 +42,20 @@ impl IntoResponse for ApiError {
                 StatusCode::NOT_FOUND,
                 format!("ticker with ID {id} not found"),
             ),
+            ApiError::InvalidInviteCode(code) => (
+                StatusCode::BAD_REQUEST,
+                format!("the invitation code '{code}' is invalid"),
+            ),
+            ApiError::UsernameAlreadyTaken(name) => (
+                StatusCode::BAD_REQUEST,
+                format!("username '{name}' was already taken"),
+            ),
+            ApiError::UnregisteredUser => {
+                (StatusCode::BAD_REQUEST, format!("username does not exists"))
+            }
+            ApiError::WrongPassword => {
+                (StatusCode::BAD_REQUEST, format!("wrong password for user"))
+            }
         };
 
         let body = Json(json!({

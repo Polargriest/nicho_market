@@ -1,3 +1,4 @@
+use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -15,6 +16,8 @@ pub struct Market {
 
     next_ticker_id: i32,
     next_user_id: i32,
+
+    invite_codes: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -65,7 +68,21 @@ impl Market {
             users: Vec::new(),
             next_ticker_id: 0,
             next_user_id: 0,
+            invite_codes: Self::generate_invite_codes(5),
         }
+    }
+
+    pub fn generate_invite_codes(quantity: i32) -> Vec<String> {
+        let mut invite_codes = Vec::new();
+
+        for _ in 0..quantity {
+            let random_string = Alphanumeric
+                .sample_string(&mut rand::rng(), 6)
+                .to_uppercase();
+            invite_codes.push(random_string);
+        }
+
+        invite_codes
     }
 
     pub fn load_market(path: &str) -> Self {
@@ -121,10 +138,51 @@ impl Market {
         self.users.iter().find(|u| u.token == token).map(|u| u.id)
     }
 
+    pub fn try_registering_user(
+        &mut self,
+        name: String,
+        password: String,
+        invite_code: String,
+    ) -> Result<User, ApiError> {
+        if !self.invite_codes.contains(&invite_code) {
+            return Err(ApiError::InvalidInviteCode(invite_code));
+        }
+
+        let usernames: Vec<&String> = self.users.iter().map(|user| &user.name).collect();
+
+        if usernames.contains(&&name) {
+            return Err(ApiError::UsernameAlreadyTaken(name));
+        }
+
+        // we already checked that the invite code exists
+        let pos = self
+            .invite_codes
+            .iter()
+            .position(|code| *code == invite_code)
+            .unwrap();
+        self.invite_codes.swap_remove(pos);
+
+        Ok(self.add_user(&name, &password))
+    }
+
+    pub fn validate_credentials(&self, name: String, password: String) -> Result<String, ApiError> {
+        let user = self
+            .users
+            .iter()
+            .find(|user| user.name == name)
+            .ok_or(ApiError::UnregisteredUser)?;
+
+        if !user.verify_password(&password) {
+            return Err(ApiError::WrongPassword);
+        };
+
+        Ok(user.token.clone())
+    }
+
     /// Crea a un nuevo usuario en el mercado y lo mete a la lista. El ID del usuario se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
-    pub fn add_user(&mut self, name: &str) -> User {
-        let user = User::new(self.next_user_id, name.to_string());
+    pub fn add_user(&mut self, name: &str, password: &str) -> User {
+        let user = User::new(self.next_user_id, name, password);
         println!("(+) User '{name}' created (Token: {})", user.token);
         self.next_user_id += 1;
         self.users.push(user.clone());
@@ -186,12 +244,7 @@ impl Market {
     /// Crea un nuevo ticker (o nicho) en el mercado y lo mete a la lista. El ID del ticker se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
     pub fn add_ticker(&mut self, author: i32, name: &str, description: &str) -> Ticker {
-        let mut ticker = Ticker::new(
-            self.next_ticker_id,
-            author,
-            name.to_string(),
-            description.to_string(),
-        );
+        let mut ticker = Ticker::new(self.next_ticker_id, author, name, description);
 
         ticker.transactions.push(Transaction {
             author,
@@ -359,7 +412,7 @@ mod tests {
     #[test]
     fn user_can_buy_if_enough_money() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         market.set_money_for_user(user.id, 600).unwrap();
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
 
@@ -380,7 +433,7 @@ mod tests {
     #[test]
     fn user_cant_buy_if_not_enough_money() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
 
         let result = market.buy_actions(user.id, ticker.id, 5);
@@ -399,7 +452,7 @@ mod tests {
     #[test]
     fn user_cant_sell_if_not_enough_actions() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
         market.set_money_for_user(user.id, 600).unwrap();
         market.buy_actions(user.id, ticker.id, 5).unwrap();
@@ -421,7 +474,7 @@ mod tests {
     #[test]
     fn user_can_sell_if_enough_actions() {
         let mut market = Market::new();
-        let user = market.add_user("John Market");
+        let user = market.add_user("John Market", "123");
         let ticker = market.add_ticker(user.id, "Ticker", "Wooba Looba Dup Dup!");
         market.set_money_for_user(user.id, 600).unwrap();
         market.buy_actions(user.id, ticker.id, 5).unwrap();
