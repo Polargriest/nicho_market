@@ -165,6 +165,21 @@ impl Market {
         Ok(self.add_user(&name, &password))
     }
 
+    pub fn validate_credentials(&self, name: String, password: String) -> Result<String, ApiError> {
+        let usernames: Vec<&String> = self.users.iter().map(|user| &user.name).collect();
+        if !usernames.contains(&&name) {
+            return Err(ApiError::UnregisteredUser);
+        }
+
+        // we already checked user exists, so its safe to unwrap
+        let user = self.users.iter().find(|user| user.name == name).unwrap();
+        if user.password != password {
+            return Err(ApiError::WrongPassword);
+        }
+
+        Ok(user.token.clone())
+    }
+
     /// Crea a un nuevo usuario en el mercado y lo mete a la lista. El ID del usuario se autogenera.
     /// No se llenan los huecos vacíos, sino que el ID siempre incrementa en uno.
     pub fn add_user(&mut self, name: &str, password: &str) -> User {

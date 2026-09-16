@@ -11,6 +11,8 @@ pub enum ApiError {
     TickerNotFound(i32),
     InvalidInviteCode(String),
     UsernameAlreadyTaken(String),
+    UnregisteredUser,
+    WrongPassword,
 }
 
 impl IntoResponse for ApiError {
@@ -48,6 +50,12 @@ impl IntoResponse for ApiError {
                 StatusCode::BAD_REQUEST,
                 format!("username '{name}' was already taken"),
             ),
+            ApiError::UnregisteredUser => {
+                (StatusCode::BAD_REQUEST, format!("username does not exists"))
+            }
+            ApiError::WrongPassword => {
+                (StatusCode::BAD_REQUEST, format!("wrong password for user"))
+            }
         };
 
         let body = Json(json!({

@@ -196,7 +196,7 @@ struct RegistrationRequest {
     invite_code: String,
 }
 
-async fn register_user_endpoint(
+async fn sign_in_endpoint(
     State(store): State<Arc<Mutex<Market>>>,
     contents: Json<RegistrationRequest>,
 ) -> Result<Json<User>, ApiError> {
@@ -205,6 +205,24 @@ async fn register_user_endpoint(
         contents.password.clone(),
         contents.invite_code.clone(),
     )?;
+    Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LogInRequest {
+    name: String,
+    password: String,
+}
+
+async fn log_in_endpoint(
+    State(store): State<Arc<Mutex<Market>>>,
+    contents: Json<LogInRequest>,
+) -> Result<Json<String>, ApiError> {
+    let result = store
+        .lock()
+        .unwrap()
+        .validate_credentials(contents.name.clone(), contents.password.clone())?;
     Ok(Json(result))
 }
 
@@ -250,7 +268,8 @@ pub fn create_app(market: Arc<Mutex<Market>>) -> Router {
         .route("/remove_ticker/{ticker_id}", post(remove_ticker_endpoint))
         .route("/remove_user/{user_id}", post(remove_user_endpoint))
         .route("/add_ticker", post(add_ticker))
-        .route("/register_user", post(register_user_endpoint))
+        .route("/sign_in", post(sign_in_endpoint))
+        .route("/log_in", post(log_in_endpoint))
         .layer(GovernorLayer::new(write_config))
         .layer(middleware::from_fn_with_state(
             market.clone(),
